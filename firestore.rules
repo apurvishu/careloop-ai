@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isPatientMember(patientId) {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/patientMemberships/$(request.auth.uid + '_' + patientId)) ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    function isCaregiver(patientId) {
+      return isPatientMember(patientId) &&
+        get(/databases/$(database)/documents/patientMemberships/$(request.auth.uid + '_' + patientId)).data.role == 'PRIMARY_CAREGIVER';
+    }
+
+    // User profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
+    }
+
+    // Patients
+    match /patients/{patientId} {
+      allow read: if isPatientMember(patientId);
+      allow create: if isAuthenticated();
+      allow update: if isCaregiver(patientId) || request.auth.uid == resource.data.userId;
+      allow delete: if isCaregiver(patientId);
+    }
+
+    // Patient memberships (composite ID: uid_patientId)
+    match /patientMemberships/{membershipId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isCaregiver(resource.data.patientId)
+      );
+      allow write: if isAuthenticated();
+    }
+
+    // Medications
+    match /medications/{medicationId} {
+      allow read: if isPatientMember(resource.data.patientId);
+      allow create: if isCaregiver(request.resource.data.patientId);
+      allow update, delete: if isCaregiver(resource.data.patientId);
+    }
+
+    // Scheduled Doses
+    match /scheduledDoses/{doseId} {
+      allow read: if isPatientMember(resource.data.patientId);
+      allow create: if isCaregiver(request.resource.data.patientId) || request.auth.token.role == 'service';
+      allow update: if isPatientMember(resource.data.patientId);
+    }
+
+    // Appointments
+    match /appointments/{appointmentId} {
+      allow read: if isPatientMember(resource.data.patientId);
+      allow write: if isCaregiver(request.resource.data.patientId) || isCaregiver(resource.data.patientId);
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+    }
+
+    // Caregiver Alerts
+    match /caregiverAlerts/{alertId} {
+      allow read: if isPatientMember(resource.data.patientId);
+      allow update: if isPatientMember(resource.data.patientId);
+      allow create: if isAuthenticated();
+    }
+
+    // Invitations
+    match /invitations/{invitationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isCaregiver(request.resource.data.patientId);
+      allow update: if isAuthenticated();
+    }
+
+    // Activity Logs
+    match /activityLogs/{logId} {
+      allow read: if isPatientMember(resource.data.patientId);
+      allow create: if isAuthenticated();
+    }
+
+    // Emergency Profiles
+    match /emergencyProfiles/{profileId} {
+      allow read: if isPatientMember(resource.data.patientId);
+      allow write: if isCaregiver(request.resource.data.patientId) || isCaregiver(resource.data.patientId);
+    }
+
+    // AI Care Summaries
+    match /aiCareSummaries/{summaryId} {
+      allow read: if isPatientMember(resource.data.patientId);
+      allow write: if isCaregiver(request.resource.data.patientId);
+    }
+  }
+}
