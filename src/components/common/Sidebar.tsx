@@ -52,25 +52,23 @@ export default function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive
                   ? "bg-care-blue text-white shadow-md shadow-blue-900/30"
                   : item.alert
-                  ? "text-red-300 hover:bg-red-950/40 hover:text-red-200"
-                  : "text-slate-300 hover:bg-navy-800/80 hover:text-white"
-              }`}
+                    ? "text-red-300 hover:bg-red-950/40 hover:text-red-200"
+                    : "text-slate-300 hover:bg-navy-800/80 hover:text-white"
+                }`}
             >
               <div className="flex items-center space-x-3">
                 <Icon
-                  className={`w-4 h-4 ${
-                    isActive
+                  className={`w-4 h-4 ${isActive
                       ? "text-white"
                       : item.alert
-                      ? "text-red-400"
-                      : item.badge
-                      ? "text-care-teal"
-                      : "text-slate-400"
-                  }`}
+                        ? "text-red-400"
+                        : item.badge
+                          ? "text-care-teal"
+                          : "text-slate-400"
+                    }`}
                 />
                 <span>{item.name}</span>
               </div>
